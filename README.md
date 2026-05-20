@@ -1,3 +1,32 @@
+# DEPRECATED — superseded by the Web Dark Mode Bundle
+
+> ⚠️ **This standalone userscript is deprecated as of v2.0 of the bundle.**
+>
+> All sites previously covered by this repo (and 10 others) are now consolidated into a single auto-updating Tampermonkey userscript:
+>
+> **https://github.com/BarnsAWS/Web-Dark-Mode-Bundle**
+>
+> Direct install URL:
+>
+> `https://raw.githubusercontent.com/BarnsAWS/Web-Dark-Mode-Bundle/main/web_dark_mode_bundle.user.js`
+>
+> ## Migration
+>
+> 1. Open Tampermonkey dashboard.
+> 2. **Disable or remove** this script (otherwise two scripts will fight on the same page).
+> 3. Open the install URL above and click **Install**.
+> 4. Tampermonkey will auto-update from `main` going forward.
+>
+> ## Why the bundle exists
+>
+> - One install, one auto-update across all covered sites.
+> - Shared Cloudscape v3.3 engine — every site gets the same standard at the same time.
+> - Adding a new site is a one-file change to `SITES` in the bundle.
+>
+> The original README/ABOUT and userscript are retained below this notice for archival / reference.
+>
+> ---
+
 # Amazon.com Dark Mode TamperMonkey Script
 
 A Tampermonkey/Violentmonkey userscript that applies an AWS Cloudscape-aligned dark theme to **all of `amazon.com`** — Business Prime, Punchout, consumer shopping, product detail pages, cart, checkout, orders, account, and the Business Prime sub-nav and stat cards.
