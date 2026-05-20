@@ -496,3 +496,87 @@ The main observer drops `style` from its `attributeFilter` (the tight observer h
 ## License
 
 MIT (see `LICENSE`).
+
+
+---
+
+## 14. Bundling Pattern (Multi-Site)
+
+When more than ~3 sites share the same Cloudscape v3.3 implementation, bundle them into a single userscript instead of maintaining N standalones. The bundle pattern keeps one engine and a small per-site override table.
+
+### Why bundle
+
+- One install URL to share. One Tampermonkey "Check for updates" click pulls every site's latest fix.
+- Per-site repos remain authoritative for fine-grained iteration. The bundle is a periodic snapshot.
+- New sites added to the bundle need only a `SITES` table entry — no separate repo required if the site needs no per-site overrides beyond the baseline.
+
+### Structure
+
+The bundle file has three sections:
+
+1. **`@match` block at the top** — a flat list of every host the bundle activates on, both bare domain and wildcard subdomain.
+2. **`SITES` array** — one entry per host with optional per-site overrides.
+3. **Engine** — the standard Cloudscape v3.3 CSS + JS layer documented in Sections 1–13. Unchanged from per-site scripts.
+
+```javascript
+const SITES = [
+    { host: 'cloudscape-host.example.com', awsui: true },
+    { host: 'vendor-host.example.com',     awsui: false },
+    {
+        host: 'retail.example.com',
+        awsui: false,
+        brandPreservation: `
+            /* Brand-color CSS that wins over the Cloudscape primary token */
+            #buy-button { background-color: #ffd814 !important; ... }
+        `
+    },
+    {
+        host: 'shopify-store.example.com',
+        awsui: false,
+        headerExtraSelectors: ['.shopify-section-header', '.site-header', /* ... */],
+        logoSelectors:        ['.header__logo', '.site-header__logo', /* ... */]
+    }
+];
+```
+
+### Per-site override fields
+
+| Field | Type | Purpose |
+|---|---|---|
+| `host` | string (required) | The hostname to match. Subdomains match via `endsWith('.' + host)`. |
+| `awsui` | boolean | Set to `true` for hosts that use the Cloudscape framework (forces the `awsui-polaris-dark-mode` body class and attaches the class observer). |
+| `brandPreservation` | CSS string | Raw CSS appended after the core stylesheet so it wins on equal-specificity ties. Use this for retail brand colors (Amazon Yellow buy-box, etc.). |
+| `headerExtraSelectors` | string[] | Selectors that should be forced to `--bg-primary`. Use this for platform-specific header markup (Shopify, WordPress, etc.). |
+| `logoSelectors` | string[] | Selectors that should get the lighter `--bg-tertiary` surface so the brand logo container reads as a distinct affordance. |
+
+### Site resolution
+
+```javascript
+const HOST = location.hostname;
+function findSite(host) {
+    for (var i = 0; i < SITES.length; i++) {
+        var s = SITES[i];
+        if (host === s.host || host.endsWith('.' + s.host)) return s;
+    }
+    return { host: host, awsui: false }; // generic fallback
+}
+const SITE = findSite(HOST);
+```
+
+The fallback returns a config that still applies the Cloudscape baseline. Sites that need no per-site overrides can be added with a one-line `SITES` entry.
+
+### Adding a new site
+
+Three steps, no separate repo required:
+
+1. Add `@match` lines at the top of the bundle for the new domain.
+2. Add a `SITES` table entry. Most sites need only `{ host: 'example.com' }`.
+3. Reload any tab on the new domain. Tampermonkey re-injects automatically.
+
+### When to spin up a standalone repo instead
+
+If a site needs more than ~20 lines of overrides (large brand-color block, custom JS pass, framework-specific quirks), put it in its own standalone repo and keep the bundle as a thin wrapper that defers to the same engine. The standalone repo continues to be the authoritative source; the bundle picks up the change at next sync.
+
+### Bundle vs standalone — install order
+
+If a user installs both the bundle and a per-site script for the same host, Tampermonkey runs them in install order. The more-specific match generally wins on equal-priority rules. Most users will pick one approach and stick with it.
