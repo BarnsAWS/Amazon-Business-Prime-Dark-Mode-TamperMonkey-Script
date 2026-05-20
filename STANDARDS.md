@@ -619,3 +619,65 @@ For sites with very large DOMs (=2,000 elements per page, =50 result tiles, freq
 Trade-off: the CSS rules for the site MUST cover every container surface (no JS safety net for missed surfaces). Profile the site first by enumerating class names with `Object.keys(...class lists...)` and write site-specific selectors that cover them. Real-world example: `amazon.com` uses `.a-section` (1,272 instances), `.a-box` (102), `.s-result-item` (68), `.s-card-container` (60), `.puis-card` (60), `.sg-col` (134) — all enumerated in `tweaks` for that site.
 
 See `AMAZON_PERFORMANCE.md` in the bundle repo for the full investigation.
+
+
+### Dual-Update Rule (added 2026-05-20)
+
+**Whenever a site is added or its dark-mode rules are updated, both the consolidated bundle and the individual standalone repo for that site must be updated in the same change set.** Neither can drift behind the other.
+
+The bundle (`AWS-DC-Full-Open-Source-Dark-Mode-Bundle`) is the single-install entrypoint most users prefer. The standalone repos remain authoritative per-site references for fine-grained iteration, audits, and per-site issue triage. Drift between the two means a user installing the bundle gets stale rules, or a user installing a standalone gets a fix that the bundle is also missing.
+
+#### Order of operations
+
+1. **Land the change in the standalone repo first.** This is where you iterate, profile, test, and capture the rationale (e.g., `FERRO_INVESTIGATION.md`, `AMAZON_PERFORMANCE.md`).
+2. **Port the change into the bundle's `SITES` table.** Most changes are CSS strings that copy verbatim into the entry's `tweaks` field; behavioral flags (e.g. `fastPath: true`) go into the entry's top-level config.
+3. **Bump versions on both files in the same commit batch.** Standalone gets a patch/minor bump in its own header; the bundle gets a corresponding bump in its `@version` line.
+4. **Update the changelog/header comments on both** with a one-line summary of what changed.
+5. **Push both repos in the same session** so the GitHub raw URLs serve the matched pair within seconds of each other.
+6. **Verify both raw URLs serve the new versions** before declaring the change complete (see "Verification" below).
+
+#### Versioning conventions
+
+| Change type | Standalone bump | Bundle bump |
+|---|---|---|
+| New site added | n/a (new standalone repo at `v1.0`) | minor: `2.x` ? `2.x+1` |
+| New rule for an existing site | patch: `1.x` ? `1.x+1` | patch: `2.x` ? `2.x+1` |
+| Engine-level change (shared CSS or JS) | every standalone gets a patch bump | minor: `2.x` ? `2.x+1` |
+| Standard-level change (token revision, anti-pattern added) | minor: `1.x` ? `1.x+1` everywhere | minor: `2.x` ? `2.x+1` |
+
+#### Per-change checklist
+
+- [ ] Standalone userscript header `@version` bumped.
+- [ ] Bundle userscript header `@version` bumped.
+- [ ] Bundle's `SITES` entry for that host updated (tweaks string and/or flags).
+- [ ] Investigation/profile doc (if the change required research) committed to the standalone repo.
+- [ ] Same investigation doc copied into the bundle repo (so a user reading just the bundle has full context).
+- [ ] `STANDARDS.md` updated in `_dark-mode-shared` if a new pattern, anti-pattern, or hazard was discovered.
+- [ ] Updated `STANDARDS.md` propagated to every repo so reference docs stay synchronized.
+- [ ] Both repos pushed.
+- [ ] Both raw URLs verified to serve the bumped version (`Invoke-WebRequest` + regex check).
+- [ ] Tampermonkey install URLs opened in the active browser so the update prompt is visible.
+
+#### Verification snippet (PowerShell)
+
+```powershell
+$repos = @(
+    @{ url = 'https://raw.githubusercontent.com/.../bundle.user.js';     expected = '2.x' },
+    @{ url = 'https://raw.githubusercontent.com/.../standalone.user.js'; expected = '1.x' }
+)
+foreach ($r in $repos) {
+    $bytes = (Invoke-WebRequest -Uri $r.url -UseBasicParsing -Headers @{'User-Agent'='Mozilla/5.0 Firefox/130.0'} -TimeoutSec 30).Content
+    $text  = if ($bytes -is [byte[]]) { [System.Text.Encoding]::UTF8.GetString($bytes) } else { [string]$bytes }
+    $v     = [regex]::Match($text, '@version\s+([\d.]+)').Groups[1].Value
+    Write-Host ("{0} | expected {1} | got {2} | {3}" -f $(if ($v -eq $r.expected) { 'OK' } else { 'STALE' }), $r.expected, $v, $r.url)
+}
+```
+
+#### When the dual-update rule does NOT apply
+
+- A site lives **only** in the bundle (no standalone repo). Adding a single-line `SITES` entry for a small site with no per-site overrides is bundle-only by design. Promote to a standalone if the site grows beyond ~20 lines of overrides.
+- A site lives **only** as a standalone (the bundle has not yet absorbed it). The next bundle version should pull it in.
+
+#### Why this rule exists
+
+Without it, the bundle and standalone for a given site can drift in opposite directions, leading to user confusion ("the bundle's broken on Ferro but the standalone works"), duplicated investigation effort, and stale rules that re-introduce already-fixed bugs. The rule keeps the dual-distribution model honest at near-zero overhead — porting a CSS string from a standalone into a bundle's `tweaks` field is a 30-second operation when done in the same change set.
