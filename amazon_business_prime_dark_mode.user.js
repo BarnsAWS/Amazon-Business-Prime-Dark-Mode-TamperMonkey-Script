@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Amazon Business Prime Dark Mode
 // @namespace    http://tampermonkey.net/
-// @version      1.5
+// @version      1.6
 // @description  High-contrast dark mode for amazon.com (Business Prime / Punchout / consumer / product detail / cart / checkout / orders) â€” nuclear approach.
 //               Color palette: AWS Cloudscape "Polaris Dark Mode" tokens v3.3.
 // @author       BarnsAWS
@@ -812,9 +812,14 @@
     }
 
     function init() {
-        log('Initializing v1.3 (Cloudscape v3.3 sub-component coverage + bg-image stripping + tight observer)');
+        log('Initializing v1.6 (fastPath CSS-only on amazon.com)');
         activateCloudscapeFlag();
         injectGlobalCSS();
+        // v1.6: on amazon.com, CSS covers all surfaces — skip JS passes entirely.
+        if (__amazonFastPath) {
+            try { console.debug('[Amazon Business Prime Dark Mode] fastPath: CSS-only mode'); } catch (_) {}
+            return;
+        }
         nuclearDarkMode();
         forceTopBarDark();
         forceInlineControlsDark();
@@ -858,9 +863,11 @@
         init();
     }
 
-    window.addEventListener('load', function() {
-        setTimeout(function() { nuclearDarkMode(); forceTopBarDark(); forceInlineControlsDark(); forceSelectedRowsDark(); pierceShadowRoots(document); }, 500);
-        setTimeout(function() { nuclearDarkMode(); forceTopBarDark(); forceInlineControlsDark(); forceSelectedRowsDark(); pierceShadowRoots(document); }, 1500);
-        setTimeout(function() { nuclearDarkMode(); forceTopBarDark(); forceInlineControlsDark(); forceSelectedRowsDark(); pierceShadowRoots(document); }, 3000);
-    });
+    if (!__amazonFastPath) {
+        window.addEventListener('load', function() {
+            setTimeout(function() { nuclearDarkMode(); forceTopBarDark(); forceInlineControlsDark(); forceSelectedRowsDark(); pierceShadowRoots(document); }, 500);
+            setTimeout(function() { nuclearDarkMode(); forceTopBarDark(); forceInlineControlsDark(); forceSelectedRowsDark(); pierceShadowRoots(document); }, 1500);
+            setTimeout(function() { nuclearDarkMode(); forceTopBarDark(); forceInlineControlsDark(); forceSelectedRowsDark(); pierceShadowRoots(document); }, 3000);
+        });
+    }
 })();
