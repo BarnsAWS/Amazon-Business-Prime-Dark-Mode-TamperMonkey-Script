@@ -4,11 +4,11 @@
 >
 > All sites previously covered by this repo (and 10 others) are now consolidated into a single auto-updating Tampermonkey userscript:
 >
-> **https://github.com/BarnsAWS/Web-Dark-Mode-Bundle**
+> **https://github.com/BarnsAWS/AWS-DC-Full-Open-Source-Dark-Mode-Bundle**
 >
 > Direct install URL:
 >
-> `https://raw.githubusercontent.com/BarnsAWS/Web-Dark-Mode-Bundle/main/web_dark_mode_bundle.user.js`
+> `https://raw.githubusercontent.com/BarnsAWS/AWS-DC-Full-Open-Source-Dark-Mode-Bundle/main/web_dark_mode_bundle.user.js`
 >
 > ## Migration
 >
