@@ -580,3 +580,26 @@ If a site needs more than ~20 lines of overrides (large brand-color block, custo
 ### Bundle vs standalone — install order
 
 If a user installs both the bundle and a per-site script for the same host, Tampermonkey runs them in install order. The more-specific match generally wins on equal-priority rules. Most users will pick one approach and stick with it.
+
+
+### Pseudo-element hazard (added 2026-05-20)
+
+Some themes paint a full-bleed white surface via a `::before` or `::after` pseudo-element with a positive `z-index`, sitting **on top of** the element you're trying to dark-mode. JS observers cannot see pseudo-elements (they aren't in the DOM tree), so `enforceDarkSurfaces()` will never touch them. CSS targeting the parent's `background-color` will be visually defeated by the overlay.
+
+**Symptom:** the JS surface detector reports `isLight: false` for the parent, yet the page visually shows a white strip in that location.
+
+**Detection:** open DevTools ? Elements panel ? click the offending strip ? check the Computed styles for the parent. If `background-color` is dark but the visual is white, expand the rule list and look for `::before` / `::after` lines or scroll the Pseudo column.
+
+**Fix pattern:**
+
+```css
+.problem-element::after, .problem-element::before {
+    background-color: transparent !important;
+    background-image: none !important;
+    display: none !important;
+}
+```
+
+Use `display: none` if the pseudo-element exists purely for color (a decorative strip). Use `transparent` if the pseudo-element also positions an icon, badge, or arrow.
+
+**Real-world example:** Ferro Concepts shipped on Shopify Timber paints `.nav-bar:after { background-color: #fff; z-index: 6 }` over its `.nav-bar` element. The fix in v2.2 of the Cloudscape Dark Mode Bundle is documented in detail in `FERRO_INVESTIGATION.md` in that repo.
