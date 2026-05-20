@@ -1,18 +1,16 @@
 // ==UserScript==
 // @name         Amazon Business Prime Dark Mode
 // @namespace    http://tampermonkey.net/
-// @version      1.3
-// @description  High-contrast dark mode for amazon.com Business Prime / Punchout pages — nuclear approach.
+// @version      1.4
+// @description  High-contrast dark mode for amazon.com (Business Prime / Punchout / consumer / product detail / cart / checkout / orders) — nuclear approach.
 //               Color palette: AWS Cloudscape "Polaris Dark Mode" tokens v3.3.
 // @author       BarnsAWS
-// @match        https://www.amazon.com/*business*
-// @match        https://www.amazon.com/*punchout*
-// @match        https://www.amazon.com/*b2b*
-// @match        https://www.amazon.com/ref=nodl_punchout*
-// @match        https://www.amazon.com/ap/*business*
+// @match        https://www.amazon.com/*
+// @match        https://amazon.com/*
+// @match        https://smile.amazon.com/*
 // @match        https://business.amazon.com/*
-// @include      https://www.amazon.com/*?*=Business*
-// @include      https://www.amazon.com/*Business*
+// @match        https://www.amazon.com/ref=nodl_punchout*
+// @match        https://www.amazon.com/ap/*
 // @grant        GM_addStyle
 // @run-at       document-start
 // ==/UserScript==
@@ -127,6 +125,23 @@
         color: #8c8c94 !important;
         -webkit-text-fill-color: #8c8c94 !important;
         border-color: #656871 !important;
+    }
+
+
+    /* ===== AMAZON RETAIL BRAND PRESERVATION (v1.4) =====
+       Amazon.com uses Amazon Yellow (#ffd814) for buy-box CTAs (Add to Cart,
+       Buy Now, Continue) - NOT Cloudscape orange. This block preserves the
+       Amazon Yellow brand color for the retail buy-box buttons. */
+    #add-to-cart-button, #buy-now-button,
+    [name="submit.buy-now"], [name="submit.add-to-cart"],
+    [data-action="a-button-yellow"], .a-button-yellow .a-button-inner,
+    .a-button-yellow .a-button-text,
+    [class*="button-yellow"], [id*="buybox-action-buybox"] {
+        background-color: #ffd814 !important;
+        background-image: linear-gradient(to bottom, #f7ca00, #f0b800) !important;
+        color: #0f1111 !important;
+        -webkit-text-fill-color: #0f1111 !important;
+        border-color: #fcd200 !important;
     }
 
     /* Cards */

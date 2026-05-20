@@ -1,10 +1,12 @@
-# Amazon Business Prime Dark Mode TamperMonkey Script
+# Amazon.com Dark Mode TamperMonkey Script
 
-A Tampermonkey/Violentmonkey userscript that applies an AWS Cloudscape-aligned dark theme to Amazon Business / Business Prime / Punchout pages on `amazon.com` and `business.amazon.com`.
+A Tampermonkey/Violentmonkey userscript that applies an AWS Cloudscape-aligned dark theme to **all of `amazon.com`** — Business Prime, Punchout, consumer shopping, product detail pages, cart, checkout, orders, account, and the Business Prime sub-nav and stat cards.
+
+> **Note:** This repository was originally scoped to Business Prime / Punchout pages only. As of `v1.4` the `@match` block has been broadened to cover the full `amazon.com` surface (and `business.amazon.com`). The repo name retains the original "Business Prime" wording so the GitHub raw install URL stays stable for existing users; the script itself styles every Amazon page.
 
 ## What This Repository Contains
 
-- `amazon_business_prime_dark_mode.user.js` — the Tampermonkey userscript.
+- `amazon_business_prime_dark_mode.user.js` — the Tampermonkey userscript (v1.4, broadened scope).
 - `STANDARDS.md` — the Cloudscape-aligned dark-mode standard the script implements.
 - `SANITIZATION.md` — what was scrubbed before this repo was made public.
 - `LICENSE` — MIT.
@@ -14,29 +16,31 @@ A Tampermonkey/Violentmonkey userscript that applies an AWS Cloudscape-aligned d
 
 The script follows the **Cloudscape Dark Mode Standard v3.3** (see `STANDARDS.md`):
 
-- Forces a Cloudscape "Polaris Dark Mode" palette on Business Prime / Punchout / B2B page surfaces — page shell, top bar (logo + delivery selector + business search), the Business Prime sub-nav, hero carousels, "Business Essentials" / "Summary" / "Your business savings" / "Shop small and local" / "Buy it again" cards, the "Explore departments" tile grid, and product detail pages.
+- Forces a Cloudscape "Polaris Dark Mode" palette across every Amazon page surface — top bar (logo + delivery selector + search + cart), the Business Prime sub-nav (when present), product detail pages, image galleries, "Buying multiple items?" basket, color/size selectors, the right-rail buy box ("Add to cart", "Request for Quote", price, prime badge, returns policy), department category browse, search results grid, cart and checkout flows, orders/returns, account settings.
 - Preserves the full Cloudscape text hierarchy (emphasis → heading → body → muted → disabled).
-- Applies semantic alert tints (red error, blue info, green success) and Amazon Orange to primary action buttons.
-- Forces dark surfaces on dropdowns, popovers, modals, menus, listboxes, tooltips, and any framework `awsui_*` surfaces.
+- Applies semantic alert tints (red error, blue info, green success badge) and Amazon Orange to primary action buttons (Add to Cart, Buy Now, Continue, Place Your Order).
+- Forces dark surfaces on dropdowns, popovers, modals, menus, listboxes, tooltips, the "Hover Zoom" image lens, and any framework `awsui_*` surfaces.
 - Runs the v3.3 `enforceDarkSurfaces()` JS pass which detects light surfaces via *both* `background-color` and `background-image` (so framework gradients with white stops are stripped), and routes them by luminance bucket to `--bg-secondary` (`#1b232d`) or `--bg-tertiary` (`#232b37`).
-- Includes the v3.3 sub-component coverage block so card-internal `header` / `[class*="title"]` / `[class*="body"]` / `[class*="content"]` / `[class*="footer"]` drop to transparent and inherit the parent card's `--bg-secondary` surface.
-- Attaches the v3.3 tight-loop `MutationObserver` on `style` attribute mutations, batched via `requestAnimationFrame`, so framework writes during interaction (focus, blur, hover, async cart updates, lazy-loaded carousel pages) get corrected within ~16 ms.
+- Includes the v3.3 sub-component coverage block so card-internal `header` / `[class*="title"]` / `[class*="body"]` / `[class*="content"]` / `[class*="footer"]` drop to transparent and inherit the parent card's surface (covers Amazon's stat cards, info banners, "Organization preferred" green-tinted preference banner, the buy box, and product detail panels).
+- Attaches the v3.3 tight-loop `MutationObserver` on `style` attribute mutations, batched via `requestAnimationFrame`, so framework writes during interaction (focus, blur, hover, async cart updates, lazy-loaded carousel pages, color-swatch selection) get corrected within ~16 ms.
 - Includes the v3.1 inline-control rule so the search input, address pickers, quantity steppers, and any address-book/payment selects render as inset wells with a `#656871` border (passes WCAG 1.4.11).
-- Includes the v3.2 generalized in-content selected rule so the active sub-nav tab and selected list-item filters get appropriate emphasis surfaces.
+- Includes the v3.2 generalized in-content selected rule so the active sub-nav tab, the selected color/size swatch, and selected list-item filters get appropriate emphasis surfaces.
 - Pierces open shadow roots and re-applies the same stylesheet.
 - Observes DOM mutations with a 250 ms main observer (`class` / `aria-*` / `data-*`) and a tight rAF observer (`style` only); runs delayed safety passes at 500 / 1500 / 3000 ms after `load`.
+- **Hands off product images, video previews, and SVG icons** so product photography renders correctly. Star-rating SVGs, prime checkmarks, and brand logos keep their original colors.
 
 ## Match Scope
 
-This script intentionally **does NOT** activate on the consumer Amazon shopping site. It's gated to:
+`v1.4+` activates on:
 
-- `https://www.amazon.com/*business*` / `*punchout*` / `*b2b*` URL paths
-- `https://www.amazon.com/ref=nodl_punchout*` (the canonical Business Prime Punchout entry)
-- `https://www.amazon.com/ap/*business*` (Business sign-in flow)
-- `https://business.amazon.com/*` (Business-account portal)
-- URL-pattern includes for "Business" / "?*=Business*"
+- `https://www.amazon.com/*`
+- `https://amazon.com/*`
+- `https://smile.amazon.com/*`
+- `https://business.amazon.com/*`
+- `https://www.amazon.com/ref=nodl_punchout*` (canonical Business Prime Punchout entry)
+- `https://www.amazon.com/ap/*` (sign-in flow)
 
-If you want it active on the consumer site too, edit the `@match` block at the top of the userscript.
+If you only want it on Business Prime pages and not consumer Amazon, edit the `@match` block at the top of the userscript and revert to the v1.3 path-gated patterns (`/*business*` / `/*punchout*` / `/*b2b*`).
 
 ## Install on Chrome
 
@@ -45,35 +49,37 @@ If you want it active on the consumer site too, edit the `@match` block at the t
 3. Open the raw userscript URL and let Tampermonkey prompt for install:
    `https://raw.githubusercontent.com/BarnsAWS/Amazon-Business-Prime-Dark-Mode-TamperMonkey-Script/main/amazon_business_prime_dark_mode.user.js`
 4. Click **Install**.
-5. Visit a Business Prime page and refresh once.
+5. Visit any Amazon page and refresh once.
 
 ## Install on Firefox
 
 1. Install Tampermonkey: <https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/>
 2. Open the Tampermonkey dashboard.
 3. Open the raw userscript URL above and click **Install**.
-4. Visit a Business Prime page and refresh once.
+4. Visit any Amazon page and refresh once.
 
 ## Verification Checklist
 
 - [ ] Page body and main content render on `#161d26`.
-- [ ] Top bar (Business Prime logo + delivery address chip + search) renders dark with `#424650` bottom border.
-- [ ] The Business Prime sub-nav (All, alexa for shopping, Business Essentials, Memorial Day Sale, Small and Local Businesses, Buy Again, Your Catalog, Today's Deals, Subscribe & Save, Business Savings, Recommendations, Savings For You, Lists, Business Prime) renders readable on dark; the active tab uses the Cloudscape underline.
-- [ ] Stat cards (Business Essentials / Summary / Your business savings / Shop small and local / Buy it again) render on `#1b232d` with `#424650` borders.
-- [ ] Internal sub-components of those cards (titles, bodies, dollar figures, dates) all read on dark — no white strips.
-- [ ] "Explore departments" tile grid renders dark with bright tile labels.
-- [ ] Search input renders as an inset `#0a0f15` well with a `#656871` border.
-- [ ] Primary CTAs (Add to Cart, Continue Checkout, Discover more savings) render in Amazon Orange `#ff9900` with dark text.
-- [ ] Links are `#42b4ff` and lighten to `#89cbff` on hover.
+- [ ] Top bar (logo + delivery address chip + search + cart icon + account dropdown) renders dark with `#424650` bottom border.
+- [ ] Business Prime sub-nav (when present): All / alexa for shopping / Business Essentials / etc. renders readable; the active item uses the Cloudscape underline.
+- [ ] Search input is an inset `#0a0f15` well with a `#656871` border.
+- [ ] Product detail page: title, price, "Custom Price ↓", "List Price" strikethrough, "You Save" red callout, "FREE delivery" copy, "In Stock" green text — all readable.
+- [ ] Buy box (right rail, "Add to cart" yellow, "Request for Quote" white, "Secure transaction") renders on `#1b232d` with `#424650` border.
+- [ ] "Add to cart" stays Amazon Yellow `#ffd814` per Amazon brand (the v3.3 stylesheet preserves yellow CTA colors).
+- [ ] "Organization preferred" green-tinted banner renders with semantic-success tint and readable body text.
+- [ ] Color swatches, size dropdowns, and "See available options" remain visually distinct.
 - [ ] No card sub-component renders with a light surface.
 - [ ] No element renders with a `background-image: linear-gradient(white, ...)`.
 - [ ] No bright white flash on initial load.
+- [ ] Star ratings keep their original gold `#ffa41c` color.
 
 ## Troubleshooting
 
-- **Bright sections after load** — hard refresh (Ctrl+F5) and confirm Tampermonkey is enabled for the page. Note that the `@match` is intentionally narrow — if Business Prime adds new path segments, they may need a new `@match` line.
-- **Script also activates on consumer pages** — the `@match` patterns include "business" / "punchout" / "b2b" path tokens. If your account opens consumer URLs that contain those strings, the script will activate. Tighten the `@match` if needed.
-- **Embedded iframe still light** — Tampermonkey does not inject into cross-origin iframes by default. If a Business Prime page embeds widgets from a different domain, they're out of scope.
+- **Bright sections after load** — hard refresh (Ctrl+F5) and confirm Tampermonkey is enabled for the page.
+- **A specific component still flashes white briefly** — the tight-loop `style` observer should correct within ~16 ms. If it persists, the framework may be writing `style.background` on a parent that the observer hasn't seen yet. Open DevTools, find the offending element's class, and add it to the sub-component coverage block in the script.
+- **Embedded iframe still light** — Tampermonkey does not inject into cross-origin iframes by default. Some Amazon checkout / payment iframes are out of scope.
+- **Want to revert to Business-Prime-only scope** — edit the `@match` block and change to the path-gated v1.3 patterns (`/*business*`, `/*punchout*`, `/*b2b*`).
 
 ## Source References
 
