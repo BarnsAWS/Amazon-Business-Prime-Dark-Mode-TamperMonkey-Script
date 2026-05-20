@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Amazon Business Prime Dark Mode
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.5
 // @description  High-contrast dark mode for amazon.com (Business Prime / Punchout / consumer / product detail / cart / checkout / orders) â€” nuclear approach.
 //               Color palette: AWS Cloudscape "Polaris Dark Mode" tokens v3.3.
 // @author       BarnsAWS
@@ -142,6 +142,108 @@
         color: #0f1111 !important;
         -webkit-text-fill-color: #0f1111 !important;
         border-color: #fcd200 !important;
+    }
+
+    /* ===== AMAZON CLASS TAXONOMY (v1.5 — CSS-first fast path) =====
+       Amazon's search-results page is 2 MB+ HTML with 5000+ elements,
+       1272 .a-section, 102 .a-box, 68 .s-result-item nodes. The generic
+       [class*="card"] selectors don't match Amazon's class taxonomy, and
+       walking every element with getComputedStyle was the dark-mode-load
+       bottleneck. v1.5 covers Amazon's classes directly with CSS so the
+       theme paints at document-start with zero JS surface enumeration on
+       Amazon pages. See AMAZON_PERFORMANCE.md for the full profile. */
+    .a-section, .a-box, .a-box-inner,
+    .s-result-item, .s-card-container, .s-card-border,
+    .s-search-result, .s-widget, .s-widget-container,
+    .s-include-content-margin, .s-suggestion-container,
+    .puis-card, .puis-card-container, .puis-component,
+    .sg-col-inner, .sg-row,
+    .a-cardui, .a-cardui-content,
+    #nav-fill, #nav-tools, #nav-link-accountList,
+    #navFooter, .navFooterCopyright, .navFooterLine,
+    #search, #navbar-main, #nav-belt, #nav-main,
+    .nav-search-field, .nav-search-dropdown,
+    .glow-toaster-container, .glow-ingress-block,
+    #buybox, #apex_desktop,
+    #feature-bullets, .feature, .feature-bullets,
+    #productDetails_db_sections, #productDetailsTabbedContainer,
+    .a-form-label, .a-row {
+        background-color: transparent !important;
+        background-image: none !important;
+    }
+    /* Top-level shells stay primary */
+    #navbar, #nav-belt, #nav-main, #navFooter,
+    #pageContent, #centerCol, #leftCol, #rightCol,
+    #dp-container, #search > .s-desktop-width-max {
+        background-color: #161d26 !important;
+    }
+    /* Result tiles get card surface */
+    .a-box-group, .a-box.a-spacing-base,
+    .s-result-item.s-asin, .s-card-container,
+    .puis-card-container, .a-cardui {
+        background-color: #1b232d !important;
+        border: 1px solid #424650 !important;
+    }
+    .s-result-item:hover, .puis-card-container:hover {
+        background-color: #232b37 !important;
+    }
+    /* Top bar + search */
+    #navbar-main, #nav-belt, #nav-main, .nav-sprite-v1,
+    #navbar.nav-fixed, .nav-progressive-content {
+        background-color: #161d26 !important;
+        background-image: none !important;
+        border-bottom: 1px solid #424650 !important;
+    }
+    #twotabsearchtextbox, .nav-search-field input,
+    input[name="field-keywords"] {
+        background-color: #0a0f15 !important;
+        color: #c6c6cd !important;
+        -webkit-text-fill-color: #c6c6cd !important;
+        border: 1px solid #656871 !important;
+    }
+    #searchDropdownBox, .nav-search-dropdown select {
+        background-color: #0a0f15 !important;
+        color: #c6c6cd !important;
+        border: 1px solid #656871 !important;
+    }
+    /* Amazon-specific text colors */
+    .a-color-base, .a-color-secondary, .a-color-tertiary,
+    .a-text-bold, .a-text-normal,
+    #productTitle, #title, .product-title-word-break {
+        color: #c6c6cd !important;
+        -webkit-text-fill-color: #c6c6cd !important;
+    }
+    .a-color-link {
+        color: #42b4ff !important;
+        -webkit-text-fill-color: #42b4ff !important;
+    }
+    /* PRESERVE: price red, savings green, prime blue */
+    .a-price-whole, .a-price-fraction, .a-price-symbol,
+    .a-color-price {
+        color: #ff7a7a !important;
+        -webkit-text-fill-color: #ff7a7a !important;
+    }
+    .a-color-success {
+        color: #00b894 !important;
+        -webkit-text-fill-color: #00b894 !important;
+    }
+    /* Popovers / modals */
+    .a-popover, .a-popover-inner, .a-popover-content,
+    .a-modal, .a-modal-scroller {
+        background-color: #1b232d !important;
+        background-image: none !important;
+        border-color: #424650 !important;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.6) !important;
+    }
+    /* Filter rail */
+    #s-refinements, .s-refinements,
+    #leftNav, .left-nav, .a-filter-by {
+        background-color: #161d26 !important;
+    }
+    /* Footer */
+    #navFooter a, #navFooter a:link {
+        color: #42b4ff !important;
+        -webkit-text-fill-color: #42b4ff !important;
     }
 
     /* Cards */
@@ -559,7 +661,14 @@
         }
     }
 
-    function nuclearDarkMode() { enforceDarkSurfaces(document); }
+    // v1.5 AMAZON_FAST_PATH: skip per-element JS walk on amazon.com.
+    // The CSS class-taxonomy block above covers all Amazon surfaces, so the
+    // 5000-element getComputedStyle pass is wasted work. See AMAZON_PERFORMANCE.md.
+    var __amazonFastPath = /(^|\.)amazon\.com$/i.test(location.hostname);
+    function nuclearDarkMode() {
+        if (__amazonFastPath) return;
+        enforceDarkSurfaces(document);
+    }
 
     function forceTopBarDark() {
         var topSelectors = 'body > div:first-child, body > header, body > nav, ' +
@@ -662,6 +771,7 @@
 
     // Source pattern: Cloudscape Dark Mode Standard v3.3 - Tight-Loop Style Observer
     function attachTightStyleObserver() {
+        if (__amazonFastPath) return;   // not needed when CSS covers all surfaces
         if (window.__darkModeTightObserver) return;
         var pending = new Set();
         var rafId = null;
