@@ -721,3 +721,126 @@ if (!IS_FAST_PATH) {
 5. Document the profile and decision in a per-site `*_PERFORMANCE.md` doc (e.g., `AMAZON_PERFORMANCE.md`).
 
 **Sites currently using `fastPath: true`:** `amazon.com`, `business.amazon.com`. See `AMAZON_PERFORMANCE.md` for the full profile and ruleset.
+
+
+### Third-Party Embedded Player content (added 2026-05-20)
+
+Some sites embed third-party authored content (SCORM/Storyline/Captivate/Lectora training, Looker/Tableau dashboards, Khan Academy widgets, etc.) where:
+
+1. **Backgrounds are part of the author's design intent.** Recoloring tile backgrounds may break drag-drop affordances, color-coded feedback (red wrong / green correct), or instructional cues.
+2. **The class taxonomy is unknown / not under our control.** Selectors written generically may match too broadly or not at all.
+3. **The content sometimes runs in a cross-origin iframe** that Tampermonkey cannot inject into.
+
+**Anti-pattern:** force `background-color: #1b232d` on the player root + force `color: #c6c6cd` on text. This breaks design-intent backgrounds and produces low-contrast text against the new bg.
+
+**Pattern:** path-gated `mix-blend-mode: difference` on text only.
+
+```javascript
+function injectThirdPartyPlayerOverlay() {
+    var path = location.pathname || '';
+    if (path.indexOf('/learn/rustici/') === -1 &&
+        path.indexOf('/learn/scorm/') === -1 &&
+        path.indexOf('/learn/articulate/') === -1) return;
+
+    var css = [
+        '.slide [class*="text"], .frame [class*="text"], #player [class*="text"],',
+        '.questioncontent, .answercontent, [class*="answer-text"], [class*="question-text"] {',
+        '    color: #ffffff !important;',
+        '    -webkit-text-fill-color: #ffffff !important;',
+        '    mix-blend-mode: difference !important;',
+        '    text-shadow: none !important;',
+        '}',
+        // selection MUST be mix-blend-mode: normal so it doesn't double-invert
+        '.scorm-player ::selection, #player ::selection, .slide ::selection {',
+        '    background-color: #42b4ff !important;',
+        '    color: #0f1111 !important;',
+        '    mix-blend-mode: normal !important;',
+        '}'
+    ].join('\n');
+
+    var style = document.createElement('style');
+    style.id = 'third-party-player-overlay';
+    style.textContent = css;
+    (document.head || document.documentElement).appendChild(style);
+}
+```
+
+`mix-blend-mode: difference` makes the text color render as the absolute difference between the text color and whatever bg is beneath it — white text becomes black on white bg, becomes white on black bg, becomes high-contrast on most mid-tones. It's the right tool when you don't know the bg ahead of time.
+
+Required pairings:
+- `text-shadow: none !important` (Storyline applies decorative shadows that produce halos when the parent has a difference blend).
+- `::selection { mix-blend-mode: normal }` (selection highlights would double-invert otherwise).
+
+See `ATOZ_RUSTICI_INVESTIGATION.md` for the full case study.
+
+
+### Inverse-Contrast Fallback (added 2026-05-20)
+
+**Dark mode is not always about forcing surfaces dark.** When a host site (especially an embedded courseware framework like Rustici/SCORM) paints both surface AND text in a coordinated way using class-targeted CSS that's hard to override, the userscript's normal "force surface dark + force text light" approach can fail in two specific ways:
+
+1. **Surface forced dark, text stays dark** — text becomes invisible (dark-on-dark).
+2. **Text forced light, surface stays light** — text becomes invisible (light-on-light).
+
+The fix is the **inverse-contrast fallback**: detect a persistently-light surface (CSS rule too specific to override), then *keep the surface light and force the text DARK*. The user gets a high-contrast island in an otherwise dark page rather than invisible content. This is strictly better than the worst-case dark-on-dark or light-on-light failure modes.
+
+#### When to use it
+
+Apply the inverse-contrast fallback when:
+- The host site uses a third-party embedded framework (SCORM player, embedded help widget, vendor checkout flow) whose CSS you cannot reliably override.
+- After applying standard surface-forcing rules, manual testing shows persistent light surfaces with invisible text.
+- The light-surface region is **scoped and identifiable** (specific class patterns, a specific URL path) so the fix can be gated and won't affect the rest of the page.
+
+#### Pattern
+
+```css
+/* Step 1: try to force the surface dark first (works for ~80% of cases) */
+[class*="vendor-card"], [class*="vendor-button"] {
+    background-color: #1b232d !important;
+    color: #c6c6cd !important;
+    -webkit-text-fill-color: #c6c6cd !important;
+}
+
+/* Step 2: fallback — for elements whose inline style still says white,
+   force their text DARK instead */
+[class*="vendor-card"][style*="background-color: rgb(255"] *,
+[class*="vendor-card"][style*="background-color: white"] * {
+    color: #161d26 !important;
+    -webkit-text-fill-color: #161d26 !important;
+}
+```
+
+```javascript
+function fixVendorTextContrast() {
+    // URL-gate to avoid collateral damage on other parts of the site
+    if (!/vendor|embed|courseware/i.test(location.pathname + location.search)) return;
+    var sel = '[class*="vendor-"], [class*="embed-card"]';
+    var nodes;
+    try { nodes = document.querySelectorAll(sel); } catch (_) { return; }
+    for (var i = 0; i < nodes.length; i++) {
+        var el = nodes[i];
+        var bg;
+        try { bg = window.getComputedStyle(el).backgroundColor; } catch (_) { continue; }
+        var m = bg && bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (!m) continue;
+        var lum = +m[1] * 0.299 + +m[2] * 0.587 + +m[3] * 0.114;
+        if (lum > 180) {
+            // Surface is persistently light — force descendants' text DARK
+            try {
+                el.style.setProperty('color', '#161d26', 'important');
+                el.style.setProperty('-webkit-text-fill-color', '#161d26', 'important');
+            } catch (_) {}
+            // ... walk descendants and force their text dark too ...
+        }
+    }
+}
+```
+
+#### Critical: URL-gate the JS pass
+
+The JS pass must be URL-gated so it only runs on the affected courseware/vendor URLs. Without gating, it will incorrectly flip text dark on legitimate light-on-dark notification snackbars, alert pills, and other intentional accent surfaces elsewhere on the site.
+
+#### Real-world example
+
+Rustici SCORM courseware embedded in `atoz.amazon.work/learn/rustici/launch?...` painted quiz answer cards with `.match-card { background: #fff }` rules at high specificity. The standard surface-forcing rule was reaching the surfaces but Rustici's `.percentage-text { color: #1a1a1a }` was reaching the text — net result was dark-on-dark or light-on-light depending on which side of the cascade won.
+
+The AtoZ standalone v1.1 and bundle v2.5 use the inverse-contrast fallback to handle this cleanly. See `ATOZ_LEARN_INVESTIGATION.md` in the AtoZ standalone repo for the full investigation.
