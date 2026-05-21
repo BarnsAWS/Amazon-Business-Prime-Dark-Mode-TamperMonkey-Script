@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Amazon Business Prime Dark Mode
 // @namespace    http://tampermonkey.net/
-// @version      1.6
+// @version      1.7
 // @description  High-contrast dark mode for amazon.com (Business Prime / Punchout / consumer / product detail / cart / checkout / orders) â€” nuclear approach.
 //               Color palette: AWS Cloudscape "Polaris Dark Mode" tokens v3.3.
 // @author       BarnsAWS
@@ -17,6 +17,25 @@
 
 (function() {
     'use strict';
+
+    // === EARLY PAINT (v1.7) — sync <html> background on first script line === 
+    try {
+        if (document.documentElement) {
+            document.documentElement.style.backgroundColor = '#161d26';
+            document.documentElement.style.colorScheme = 'dark';
+        }
+    } catch (_) {}
+
+    // ===== PRE-FLASH PAINT (v1.7 — synchronous, before DOM tree exists) =====
+    // Sets <html> background-color BEFORE the browser parses any other markup.
+    // Eliminates the sub-100ms light flash on heavy Amazon pages.
+    // See FLASH_FIX_INVESTIGATION.md in the bundle repo.
+    try {
+        if (document.documentElement) {
+            document.documentElement.style.backgroundColor = '#161d26';
+            document.documentElement.style.colorScheme = 'dark';
+        }
+    } catch (_) { /* noop */ }
 
     const SCRIPT_NAME = 'Amazon Business Prime Dark Mode';
     const STYLE_ID = 'amazon-business-prime-dark-mode-style';
