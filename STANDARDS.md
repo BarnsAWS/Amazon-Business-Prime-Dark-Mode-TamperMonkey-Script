@@ -841,6 +841,6 @@ The JS pass must be URL-gated so it only runs on the affected courseware/vendor 
 
 #### Real-world example
 
-Rustici SCORM courseware embedded in `atoz.amazon.work/learn/rustici/launch?...` painted quiz answer cards with `.match-card { background: #fff }` rules at high specificity. The standard surface-forcing rule was reaching the surfaces but Rustici's `.percentage-text { color: #1a1a1a }` was reaching the text — net result was dark-on-dark or light-on-light depending on which side of the cascade won.
+Rustici SCORM courseware embedded in `a third-party SCORM courseware URL` painted quiz answer cards with `.match-card { background: #fff }` rules at high specificity. The standard surface-forcing rule was reaching the surfaces but Rustici's `.percentage-text { color: #1a1a1a }` was reaching the text — net result was dark-on-dark or light-on-light depending on which side of the cascade won.
 
 The AtoZ standalone v1.1 and bundle v2.5 use the inverse-contrast fallback to handle this cleanly. See `ATOZ_LEARN_INVESTIGATION.md` in the AtoZ standalone repo for the full investigation.
